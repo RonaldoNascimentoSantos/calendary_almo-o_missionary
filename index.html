@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário de Almoço para Missionários</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        #form input, #form button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #form button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #form button:hover {
+            background-color: #45a049;
+        }
+        #calendar {
+            height: 600px;
+        }
+        .fc-day-future {
+            background-color: #e6ffe6 !important;
+        }
+        .fc-day-past {
+            background-color: #f0f0f0 !important;
+        }
+        .fc-event-title {
+            font-size: 0.8em;
+            white-space: normal !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calendário de Almoço para Missionários</h1>
+        <form id="form">
+            <input type="text" id="nome" placeholder="Nome" required>
+            <input type="tel" id="whatsapp" placeholder="WhatsApp (com DDD)" required>
+            <input type="date" id="data" required>
+            <button type="submit">Agendar Almoço</button>
+        </form>
+        <div id="calendar"></div>
+    </div>
+
+    <script>
+        let calendar;
+
+        function loadEvents() {
+            const storedEvents = JSON.parse(localStorage.getItem('events')) || [];
+            calendar.removeAllEvents();
+            calendar.addEventSource(storedEvents);
+        }
+
+        function saveEvent(event) {
+            const storedEvents = JSON.parse(localStorage.getItem('events')) || [];
+            storedEvents.push(event);
+            localStorage.setItem('events', JSON.stringify(storedEvents));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'pt-br',
+                events: [],
+                eventContent: function(arg) {
+                    return {
+                        html: `<b>${arg.event.title}</b><br>${arg.event.extendedProps.whatsapp}`
+                    };
+                },
+                eventClick: function(info) {
+                    const whatsapp = info.event.extendedProps.whatsapp.replace(/\D/g, '');
+                    const message = encodeURIComponent(`Olá ${info.event.title}, estamos confirmando seu agendamento de almoço para os missionários no dia ${info.event.start.toLocaleDateString()}.`);
+                    window.open(`https://wa.me/55${whatsapp}?text=${message}`, '_blank');
+                },
+                dayCellDidMount: function(arg) {
+                    if (arg.date < new Date()) {
+                        arg.el.style.backgroundColor = '#f0f0f0';
+                    } else if (arg.el.classList.contains('fc-day-future')) {
+                        arg.el.style.backgroundColor = '#e6ffe6';
+                    }
+                }
+            });
+            calendar.render();
+            loadEvents();
+
+            // Atualizar o calendário a cada 5 segundos
+            setInterval(loadEvents, 5000);
+
+            document.getElementById('form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const nome = document.getElementById('nome').value;
+                const whatsapp = document.getElementById('whatsapp').value;
+                const data = document.getElementById('data').value;
+
+                // Verificar se já existe um evento nesta data
+                const existingEvent = calendar.getEvents().find(event => 
+                    event.start.toISOString().split('T')[0] === data
+                );
+
+                if (existingEvent) {
+                    alert('Esta data já está agendada. Por favor, escolha outra data.');
+                    return;
+                }
+
+                const newEvent = {
+                    title: nome,
+                    start: data,
+                    allDay: true,
+                    extendedProps: {
+                        whatsapp: whatsapp
+                    }
+                };
+
+                saveEvent(newEvent);
+                loadEvents();
+
+                // Limpar o formulário
+                document.getElementById('nome').value = '';
+                document.getElementById('whatsapp').value = '';
+                document.getElementById('data').value = '';
+
+                alert('Almoço agendado com sucesso!');
+            });
+        });
+    </script>
+</body>
+</html>
